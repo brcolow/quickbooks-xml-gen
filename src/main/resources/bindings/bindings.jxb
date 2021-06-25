@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jaxb:bindings version="2.1"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:jaxb="http://java.sun.com/xml/ns/jaxb"
+    xmlns:inheritance="http://jaxb2-commons.dev.java.net/basic/inheritance"
+    xmlns:xjc="http://java.sun.com/xml/ns/jaxb/xjc"
+    jaxb:extensionBindingPrefixes="xjc">
+
+    <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema">
+        <jaxb:schemaBindings>
+            <!-- Rename package for generated Java classes -->
+            <jaxb:package name="com.intuit.qbxml"/>
+        </jaxb:schemaBindings>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema/xs:element[@name='QBXMLMsgsRq']//xs:complexType//xs:choice">
+        <jaxb:property name="InnerRequests">
+            <jaxb:baseType name="com.brcolow.quickbooks.BaseRequestType"/>
+        </jaxb:property>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema/xs:element[@name='QBXMLMsgsRs']//xs:complexType//xs:choice">
+        <jaxb:property name="InnerResponses">
+            <jaxb:baseType name="com.brcolow.quickbooks.BaseResponseType"/>
+        </jaxb:property>
+    </jaxb:bindings>
+    <!-- Select all elements whose name "ends-with" "RqType" - we have to emulate "ends-with" as Java has XPath 1.0 -->
+    <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema/xs:complexType[substring(@name, string-length(@name)-string-length('RqType')+1)='RqType']" multiple="true">
+        <inheritance:extends>com.brcolow.quickbooks.BaseRequestType</inheritance:extends>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema/xs:complexType[substring(@name, string-length(@name)-string-length('RsType')+1)='RsType']" multiple="true">
+        <inheritance:extends>com.brcolow.quickbooks.BaseResponseType</inheritance:extends>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema/xs:complexType[@name='ItemQueryRsType']//xs:sequence//xs:choice">
+        <jaxb:property name="Items"/>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../xsd/qbxml130.xsd" node="/xs:schema/xs:element[@name='SalesOrderRet']//xs:complexType//xs:sequence//xs:choice">
+        <jaxb:property name="LineItems"/>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../xsd/qbxml130.xsd" node="/xs:schema/xs:element[@name='SalesOrderAdd']//xs:complexType//xs:sequence//xs:choice">
+        <jaxb:property name="LineItems"/>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../xsd/qbxml130.xsd" node="/xs:schema/xs:element[@name='PurchaseOrderAdd']//xs:complexType//xs:sequence//xs:choice[2]">
+        <jaxb:property name="LineItems"/>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../xsd/qbxml130.xsd" node="/xs:schema/xs:element[@name='PurchaseOrderMod']//xs:complexType//xs:sequence//xs:choice[2]">
+        <jaxb:property name="LineItems"/>
+    </jaxb:bindings>
+    <jaxb:bindings schemaLocation="../xsd/qbxml130.xsd" node="/xs:schema/xs:element[@name='PurchaseOrderRet']//xs:complexType//xs:sequence//xs:choice">
+        <jaxb:property name="LineItems"/>
+    </jaxb:bindings>
+</jaxb:bindings>
