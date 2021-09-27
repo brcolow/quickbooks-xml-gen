@@ -1,5 +1,4 @@
-@Grab(group='com.sun.xml.bind', module='jaxb-jxc', version='2.3.3-b02')
-@Grab(group='com.sun.xml.ws', module='jaxws-tools', version='2.3.2')
+@Grab(group='org.glassfish.jaxb', module='jaxb-jxc', version='3.0.2')
 import com.sun.tools.ws.WsGen
 
 import java.util.stream.Collectors

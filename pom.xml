@@ -22,18 +22,18 @@
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
-            <version>2.3.2</version>
+            <version>3.0.2</version>
         </dependency>
         <dependency>
             <groupId>jakarta.jws</groupId>
             <artifactId>jakarta.jws-api</artifactId>
-            <version>1.1.1</version>
+            <version>3.0.0</version>
         </dependency>
         <!-- Needed at runtime so that "com.sun.xml.internal.ws.spi.ProviderImpl is found -->
         <dependency>
             <groupId>com.sun.xml.ws</groupId>
             <artifactId>rt</artifactId>
-            <version>2.3.2</version>
+            <version>3.0.2</version>
             <exclusions>
                 <exclusion>
                     <groupId>jakarta.annotation</groupId>
@@ -44,7 +44,7 @@
         <dependency>
             <groupId>jakarta.xml.ws</groupId>
             <artifactId>jakarta.xml.ws-api</artifactId>
-            <version>2.3.2</version>
+            <version>4.0.0-RC1</version>
             <exclusions>
                 <exclusion>
                     <groupId>jakarta.activation</groupId>
@@ -59,13 +59,7 @@
         <dependency>
             <groupId>com.sun.xml.ws</groupId>
             <artifactId>jaxws-tools</artifactId>
-            <version>2.3.2</version>
-        </dependency>
-        <!-- Required for generating toString implementations via xjc for Quickbooks API POJOs -->
-        <dependency>
-            <groupId>org.jvnet.jaxb2_commons</groupId>
-            <artifactId>jaxb2-basics</artifactId>
-            <version>1.11.1</version>
+            <version>3.0.2</version>
         </dependency>
     </dependencies>
 
@@ -74,7 +68,7 @@
            <plugin>
                 <groupId>org.codehaus.gmavenplus</groupId>
                 <artifactId>gmavenplus-plugin</artifactId>
-                <version>1.12.1</version>
+                <version>1.13.0</version>
                 <executions>
                     <execution>
                         <id>generate-jaxws-sources</id>
@@ -110,7 +104,7 @@
                     <dependency>
                         <groupId>org.apache.groovy</groupId>
                         <artifactId>groovy-all</artifactId>
-                        <version>4.0.0-alpha-2</version>
+                        <version>4.0.0-beta-1</version>
                         <type>pom</type>
                         <scope>runtime</scope>
                     </dependency>

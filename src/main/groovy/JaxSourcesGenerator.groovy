@@ -1,11 +1,12 @@
-@Grab(group='com.sun.xml.ws', module='jaxws-tools', version='2.3.2')
+@Grab(group='org.glassfish.jaxb', module='jaxb-xjc', version='3.0.2')
 import com.sun.tools.ws.WsImport
+
+import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.security.MessageDigest
-@Grab(group='org.jvnet.jaxb2_commons', module='jaxb2-basics', version='1.11.1')
 
 def printClassPath(classLoader) {
     String classpath = ""
@@ -18,7 +19,7 @@ def printClassPath(classLoader) {
     return classpath
 }
 
-static def getChecksum(file, type) {
+static def getChecksum(file, type, version) {
     def digest = MessageDigest.getInstance(type)
     def fos = file.newInputStream()
     def buffer = new byte[16384]
@@ -26,6 +27,9 @@ static def getChecksum(file, type) {
 
     while ((len = fos.read(buffer)) > 0) {
         digest.update(buffer, 0, len)
+    }
+    if (version != null && !version.isEmpty()) {
+        digest.update(version.getBytes(StandardCharsets.US_ASCII))
     }
     fos.close()
     def checksum = digest.digest()
@@ -54,20 +58,50 @@ final String xsdFilePath = "${project.basedir}/src/main/resources/xsd/qbxmlops13
 final File bindingsChecksumFile = new File("${project.build.directory}/jax-cache/bindings.jxb")
 final File xsdChecksumFile = new File("${project.build.directory}/jax-cache/qbxmlops130.xsd")
 
-// TODO: *if* bindings.jxb or qbxmlops130.xsd have changed, then call xjc.
+ProcessBuilder processBuilder = new ProcessBuilder()
+processBuilder.command(System.getenv("JAVA_HOME") + "/bin/java", "-classpath",
+        printClassPath(this.class.classLoader), "com.sun.tools.xjc.Driver",
+        '-version')
+String xjcVersion
+try {
+    Process process = processBuilder.start()
+    BufferedReader reader =
+            new BufferedReader(new InputStreamReader(process.getInputStream()))
+
+    String line
+    String versionStr = ""
+    while ((line = reader.readLine()) != null) {
+        versionStr += line
+    }
+
+    if (!versionStr.startsWith("xjc ")) {
+        throw new Exception("expected xjc -version response to start with \"xjc \" but was: \"" + versionStr + "\"")
+    }
+    xjcVersion = versionStr.substring(4)
+
+    System.out.println("xjc version: \"" + xjcVersion + "\"")
+    int exitCode = process.waitFor()
+    if (exitCode != -1) {
+        throw new Exception("expected xjc -version to return exit code -1 but was: " + exitCode)
+    }
+} catch (Exception ex) {
+    ex.printStackTrace()
+}
+
 def runXjc = true
 def cacheDirExists = false
 if (cacheDir.exists()) {
     cacheDirExists = true
     if (bindingsChecksumFile.exists()) {
         String cachedBindingsChecksum = bindingsChecksumFile.text
-        String latestBindingsChecksum = getChecksum(new File(bindingsFilePath), "SHA-256")
+        String latestBindingsChecksum = getChecksum(new File(bindingsFilePath), "SHA-256", xjcVersion)
         if (cachedBindingsChecksum.equals(latestBindingsChecksum)) {
             if (xsdChecksumFile.exists()) {
                 String cachedXsdChecksum = xsdChecksumFile.text
-                String latestXsdChecksum = getChecksum(new File(xsdFilePath), "SHA-256")
+                String latestXsdChecksum = getChecksum(new File(xsdFilePath), "SHA-256", xjcVersion)
                 if (cachedXsdChecksum == latestXsdChecksum) {
-                    System.out.println("Skipping xjc because bindings.jxb and qbxmlops130.xsd haven't changed")
+                    System.out.println("Skipping xjc because bindings.jxb and qbxmlops130.xsd files haven't changed " +
+                            "nor has the version of xjc been changed.")
                     runXjc = false
                 }
             }
@@ -78,17 +112,19 @@ new File("${project.build.directory}").mkdir()
 new File("${project.build.directory}/generated-sources").mkdir()
 
 if (runXjc) {
-    ProcessBuilder processBuilder = new ProcessBuilder()
+    processBuilder = new ProcessBuilder()
+    // FIXME: For some reason the extensions provided by com.brcolow.xjc are only found when running with "clean" goal
+    //  e.g. "mvn clean package".
     processBuilder.command(System.getenv("JAVA_HOME") + "/bin/java", "-classpath",
             printClassPath(this.class.classLoader), "com.sun.tools.xjc.Driver",
-            '-verbose', '-extension', '-XtoString', '-Xinheritance', '-Xsetters-mode=direct',
+            '-verbose', '-extension', '-Xtostring', '-Xinherit', '-Xsetters',
             '-d', "${project.build.directory}/generated-sources",
             '-b', "${project.basedir}/src/main/resources/bindings/bindings.jxb",
             "${project.basedir}/src/main/resources/xsd/qbxmlops130.xsd")
 
 // TODO: Do we need to add "target/generated-sources" to compile scope?
     try {
-        Process process = processBuilder.start()
+        Process process = processBuilder.inheritIO().start()
         BufferedReader reader =
                 new BufferedReader(new InputStreamReader(process.getInputStream()))
 
@@ -107,8 +143,8 @@ if (runXjc) {
             cacheDir.mkdir()
         }
         // Save checksums of bindingsFilePath and xsdFilePath in bindingsChecksumFile and xsdChecksumFile respec.
-        String latestBindingsChecksum = getChecksum(new File(bindingsFilePath), "SHA-256")
-        String latestXsdChecksum = getChecksum(new File(xsdFilePath), "SHA-256")
+        String latestBindingsChecksum = getChecksum(new File(bindingsFilePath), "SHA-256", xjcVersion)
+        String latestXsdChecksum = getChecksum(new File(xsdFilePath), "SHA-256", xjcVersion)
         bindingsChecksumFile.withWriter { writer ->
             writer.write(latestBindingsChecksum)
         }
@@ -128,7 +164,7 @@ File wsdlChecksumFile = new File("${project.build.directory}/jax-cache/qbwc.wsdl
 if (cacheDirExists) {
     if (wsdlChecksumFile.exists()) {
         String cachedWsdlChecksum = wsdlChecksumFile.text
-        String latestWsdlChecksum = getChecksum(new File(wsdlFilePath), "SHA-256")
+        String latestWsdlChecksum = getChecksum(new File(wsdlFilePath), "SHA-256", null)
         if (cachedWsdlChecksum == latestWsdlChecksum) {
             runWsimport = false
             System.out.println("Skipping wsimport because qbwc.wsdl hasn't changed")
@@ -149,7 +185,7 @@ if (runWsimport) {
         throw new Exception("wsimport failed with exit code: " + wsImportExitCode + ".")
     }
     // Save checksums of wsdlFilepath in wsdlChecksumFile
-    String latestWsdlChecksum = getChecksum(new File(wsdlFilePath), "SHA-256")
+    String latestWsdlChecksum = getChecksum(new File(wsdlFilePath), "SHA-256", null)
     wsdlChecksumFile.withWriter { writer ->
         writer.write(latestWsdlChecksum)
     }

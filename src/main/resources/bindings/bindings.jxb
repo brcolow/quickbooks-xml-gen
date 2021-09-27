@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<jaxb:bindings version="2.1"
+<jaxb:bindings version="3.0"
     xmlns:xs="http://www.w3.org/2001/XMLSchema"
-    xmlns:jaxb="http://java.sun.com/xml/ns/jaxb"
-    xmlns:inheritance="http://jaxb2-commons.dev.java.net/basic/inheritance"
+    xmlns:jaxb="https://jakarta.ee/xml/ns/jaxb"
+    xmlns:inherit="http://brcolow.com/xjc/inherit"
     xmlns:xjc="http://java.sun.com/xml/ns/jaxb/xjc"
-    jaxb:extensionBindingPrefixes="xjc">
+    jaxb:extensionBindingPrefixes="xjc inherit">
 
     <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema">
         <jaxb:schemaBindings>
@@ -24,10 +24,10 @@
     </jaxb:bindings>
     <!-- Select all elements whose name "ends-with" "RqType" - we have to emulate "ends-with" as Java has XPath 1.0 -->
     <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema/xs:complexType[substring(@name, string-length(@name)-string-length('RqType')+1)='RqType']" multiple="true">
-        <inheritance:extends>com.brcolow.quickbooks.BaseRequestType</inheritance:extends>
+        <inherit:extends name="com.brcolow.quickbooks.BaseRequestType" />
     </jaxb:bindings>
     <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema/xs:complexType[substring(@name, string-length(@name)-string-length('RsType')+1)='RsType']" multiple="true">
-        <inheritance:extends>com.brcolow.quickbooks.BaseResponseType</inheritance:extends>
+        <inherit:extends name="com.brcolow.quickbooks.BaseResponseType" />
     </jaxb:bindings>
     <jaxb:bindings schemaLocation="../xsd/qbxmlops130.xsd" node="/xs:schema/xs:complexType[@name='ItemQueryRsType']//xs:sequence//xs:choice">
         <jaxb:property name="Items"/>
