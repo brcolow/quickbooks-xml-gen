@@ -1,6 +1,7 @@
-@Grab(group='org.glassfish.jaxb', module='jaxb-jxc', version='3.0.2')
+@Grab(group='org.glassfish.jaxb', module='jaxb-jxc', version='4.0.4')
 import com.sun.tools.ws.WsGen
 
+import java.lang.RuntimeException;
 import java.util.stream.Collectors
 
 def printClassPath(classLoader) {
@@ -14,27 +15,26 @@ def printClassPath(classLoader) {
     return classpath
 }
 
+def getWsGenInvocation() {
+    return [System.getenv("JAVA_HOME") + "/bin/java", "-DenableExternalEntityProcessing=true",
+            "-classpath",
+            printClassPath(this.class.classLoader), "com.sun.tools.ws.WsGen",
+            '-verbose', '-keep',
+            '-d', "${project.build.directory}/generated-classes",
+            '-s', "${project.build.directory}/generated-sources",
+            '-r', "${project.build.directory}/generated-resources",
+            'com.dow.quickbooks.QuickbooksWebConnector']
+}
+
 new File("${project.build.directory}/generated-resources").mkdir()
 
 System.out.println("Running WsGen.main....")
-
+if (System.getenv("JAVA_HOME") == null) {
+    throw new RuntimeException("JAVA_HOME environment variable must be set!");
+}
 ProcessBuilder processBuilder = new ProcessBuilder()
-System.out.println("Running:\n" + System.getenv("JAVA_HOME") + "/bin/java " + " -DenableExternalEntityProcessing=true " +
-        " -classpath " +
-        printClassPath(this.class.classLoader) + " com.sun.tools.ws.WsGen " +
-        ' -verbose ' + ' -keep ' +
-        ' -d ' + " ${project.build.directory}/generated-classes " +
-        ' -s ' + " ${project.build.directory}/generated-sources " +
-        ' -r ' + " ${project.build.directory}/generated-resources " +
-        ' com.brcolow.quickbooks.QuickbooksWebConnector')
-processBuilder.command(System.getenv("JAVA_HOME") + "/bin/java", "-DenableExternalEntityProcessing=true",
-        "-classpath",
-        printClassPath(this.class.classLoader), "com.sun.tools.ws.WsGen",
-        '-verbose', '-keep',
-        '-d', "${project.build.directory}/generated-classes",
-        '-s', "${project.build.directory}/generated-sources",
-        '-r', "${project.build.directory}/generated-resources",
-        'com.brcolow.quickbooks.QuickbooksWebConnector')
+System.out.println("Running:\n" + String.join(" ", getWsGenInvocation()))
+processBuilder.command(getWsGenInvocation())
 
 try {
     Process process = processBuilder.start()

@@ -1,4 +1,4 @@
-@Grab(group='org.glassfish.jaxb', module='jaxb-xjc', version='3.0.2')
+@Grab(group='org.glassfish.jaxb', module='jaxb-xjc', version='4.0.4')
 import com.sun.tools.ws.WsImport
 
 import java.nio.charset.StandardCharsets
@@ -6,13 +6,23 @@ import java.util.stream.Collectors
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.RuntimeException;
 import java.security.MessageDigest
 
 def printClassPath(classLoader) {
     String classpath = ""
     classpath += classLoader.getURLs().stream()
-            .map(url -> "${url.getPath().toString().substring(1)}")
-            .collect(Collectors.joining(";"))
+            .map(url -> {
+                String path = "${url.getPath().toString().substring(1)}"
+                // Found weird behavior where if Maven is run without 'clean' goal then ${project.build.directory}/target/classes/
+                // is appended (with trailing slash) which for some reason breaks xjc extension finding.
+                if (path.endsWith("/")) {
+                    return path.substring(0, path.length() - 2)
+                } else {
+                    return path
+                }
+            })
+            .collect(Collectors.joining(";", "", ";"))
     if (classLoader.parent) {
         classpath += printClassPath(classLoader.parent)
     }
@@ -55,9 +65,11 @@ System.properties.'-DenableExternalEntityProcessing' = true
 final File cacheDir = new File("${project.build.directory}/jax-cache")
 final String bindingsFilePath = "${project.basedir}/src/main/resources/bindings/bindings.jxb"
 final String xsdFilePath = "${project.basedir}/src/main/resources/xsd/qbxmlops130.xsd"
-final File bindingsChecksumFile = new File("${project.build.directory}/jax-cache/bindings.jxb")
-final File xsdChecksumFile = new File("${project.build.directory}/jax-cache/qbxmlops130.xsd")
-
+final File bindingsChecksumFile = new File("${project.build.directory}/jax-cache/" + bindingsFilePath.substring(bindingsFilePath.lastIndexOf('/'), bindingsFilePath.length()))
+final File xsdChecksumFile = new File("${project.build.directory}/jax-cache/" + xsdFilePath.substring(xsdFilePath.lastIndexOf('/'), xsdFilePath.length()))
+if (System.getenv("JAVA_HOME") == null) {
+    throw new RuntimeException("JAVA_HOME environment variable must be set!");
+}
 ProcessBuilder processBuilder = new ProcessBuilder()
 processBuilder.command(System.getenv("JAVA_HOME") + "/bin/java", "-classpath",
         printClassPath(this.class.classLoader), "com.sun.tools.xjc.Driver",
@@ -100,7 +112,7 @@ if (cacheDir.exists()) {
                 String cachedXsdChecksum = xsdChecksumFile.text
                 String latestXsdChecksum = getChecksum(new File(xsdFilePath), "SHA-256", xjcVersion)
                 if (cachedXsdChecksum == latestXsdChecksum) {
-                    System.out.println("Skipping xjc because bindings.jxb and qbxmlops130.xsd files haven't changed " +
+                    System.out.println("Skipping xjc because the bindings file and XSD file have not changed " +
                             "nor has the version of xjc been changed.")
                     runXjc = false
                 }
@@ -113,16 +125,13 @@ new File("${project.build.directory}/generated-sources").mkdir()
 
 if (runXjc) {
     processBuilder = new ProcessBuilder()
-    // FIXME: For some reason the extensions provided by com.brcolow.xjc are only found when running with "clean" goal
-    //  e.g. "mvn clean package".
     processBuilder.command(System.getenv("JAVA_HOME") + "/bin/java", "-classpath",
             printClassPath(this.class.classLoader), "com.sun.tools.xjc.Driver",
             '-verbose', '-extension', '-Xtostring', '-Xinherit', '-Xsetters',
             '-d', "${project.build.directory}/generated-sources",
-            '-b', "${project.basedir}/src/main/resources/bindings/bindings.jxb",
-            "${project.basedir}/src/main/resources/xsd/qbxmlops130.xsd")
+            '-b', bindingsFilePath,
+            xsdFilePath)
 
-// TODO: Do we need to add "target/generated-sources" to compile scope?
     try {
         Process process = processBuilder.inheritIO().start()
         BufferedReader reader =
@@ -159,7 +168,8 @@ if (runXjc) {
 // TODO: *if* qbwc.wsdl has changed, then call wsimport.
 boolean runWsimport = true
 String wsdlFilePath = "${project.basedir}/src/main/resources/wsdl/qbwc.wsdl"
-File wsdlChecksumFile = new File("${project.build.directory}/jax-cache/qbwc.wsdl")
+File wsdlChecksumFile = new File("${project.build.directory}/jax-cache/" + wsdlFilePath.substring(wsdlFilePath.lastIndexOf('/'), wsdlFilePath.length()))
+System.out.println("Cache dir exists: " + cacheDirExists)
 
 if (cacheDirExists) {
     if (wsdlChecksumFile.exists()) {
@@ -167,7 +177,7 @@ if (cacheDirExists) {
         String latestWsdlChecksum = getChecksum(new File(wsdlFilePath), "SHA-256", null)
         if (cachedWsdlChecksum == latestWsdlChecksum) {
             runWsimport = false
-            System.out.println("Skipping wsimport because qbwc.wsdl hasn't changed")
+            System.out.println("Skipping wsimport because WSDL file hasn't changed")
         }
     }
 }
@@ -178,7 +188,7 @@ if (runWsimport) {
                              '-Xnocompile',
                              '-d', "${project.build.directory}/generated-classes",
                              '-s', "${project.build.directory}/generated-sources",
-                             "${project.basedir}/src/main/resources/wsdl/qbwc.wsdl"]
+                             wsdlFilePath]
     int wsImportExitCode = WsImport.doMain(wsImportArgs)
     System.out.println("\nwsimport exited with error code: " + wsImportExitCode)
     if (wsImportExitCode != 0) {
